@@ -1,0 +1,12 @@
+# GdkPixbuf Image Loader Modules file
+# Automatically generated file, do not edit
+# Created by gdk-pixbuf-query-loaders from gdk-pixbuf-2.40.0
+#
+"/home/ns/jp2-pixbuf-loader/build/libpixbufloader-jp2.so"
+"jp2" 5 "gdk-pixbuf" "JPEG2000" "LGPL"
+"image/jp2" "image/jpm" "image/jpx" "image/jpeg2000" ""
+"j2k" "jp2" "jpc" "jpf" "jpm" "jpx" ""
+"    jP" "!!!!  " 100
+"\377O\377Q" "" 100
+
+
