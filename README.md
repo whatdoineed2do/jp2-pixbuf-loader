@@ -3,7 +3,15 @@
 
 This is a [GdkPixbuf](https://gitlab.gnome.org/GNOME/gdk-pixbuf) loader module for JPEG2000. It uses [OpenJPEG](https://github.com/uclouvain/openjpeg) to load JPEG2000 images as linear buffers in memory.
 
-Note: by default there already some JPEG2000 support in GdkPixbuf, but that uses the [JasPer](https://github.com/mdadams/jasper) image library, which only supports certain parts of the massive JPEG2000 standard, meaning certain images don't work.
+Note: by default there's already some JPEG2000 support in GdkPixbuf, but that uses the [JasPer](https://github.com/mdadams/jasper) image library, which only support certain parts of the JPEG2000 standard, meaning certain images don't work.
+
+## Installing
+
+```
+meson build && cd build && ninja install
+```
+
+TODO: AUR package
 
 ## Copying / License
 
@@ -13,5 +21,25 @@ This loader module is licensed under the GNU Lesser General Public License, vers
 
 OpenJPEG is licensed under the 2-clauses BSD License.
 
+## Development
 
+- [GdkPixbuf Reference Manual](https://developer.gnome.org/gdk-pixbuf/)
+- [Examples](https://gitlab.gnome.org/GNOME/gdk-pixbuf/tree/master/gdk-pixbuf)
 
+### Debug
+
+Run tests:
+
+`ninja test` or `meson test`
+
+Run tests with gdb:
+
+```
+meson test --gdb
+```
+
+Run tests with valgrind:
+
+```
+meson test --wrap='valgrind --leak-check=full'
+```

@@ -6,14 +6,13 @@ gdk_pixbuf_query_loaders = find_program(get_option('gdk_pixbuf_query_loaders_pat
 
 openjpeg = dependency('libopenjp2')
 
-
 pixbuf_loader_openjpeg = shared_library(
     'pixbufloader-jp2',
-    'io-jp2.c',
+    'src/io-jp2.c',
+    include_directories: 'src/',
     dependencies: [gdk_pixbuf, openjpeg],
     install: true,
     install_dir: gdk_pixbuf_moduledir,
-    version: '0.0.1',
 )
 
 meson.add_install_script(gdk_pixbuf_query_loaders.path(), '--update-cache')

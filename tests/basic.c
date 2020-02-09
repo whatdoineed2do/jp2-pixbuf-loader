@@ -46,20 +46,24 @@ gint main(gint argc, gchar **argv)
 
     g_assert(gdk_pixbuf_get_bits_per_sample(pixbuf) == 8);
 
-    g_assert(gdk_pixbuf_get_has_alpha(pixbuf));
+    g_assert(!gdk_pixbuf_get_has_alpha(pixbuf));
 
-    g_assert(components == 4);
+    g_assert(components == 3);
 
-    g_assert(rowstride == 4);
+    g_assert(rowstride == 30);
 
-    g_assert(width == 1);
+    g_assert(width == 10);
 
-    g_assert(height == 1);
+    g_assert(height == 10);
 
-    g_assert(pixels[0] == 182);
-    g_assert(pixels[1] == 106);
-    g_assert(pixels[2] == 29);
-    g_assert(pixels[3] == 112);
+    g_print("%d %d %d", pixels[3], pixels[4], pixels[5]);
+
+    g_assert(pixels[0] == 188);
+    g_assert(pixels[1] == 188);
+    g_assert(pixels[2] == 188);
+    g_assert(pixels[3] == 235);
+    g_assert(pixels[4] == 235);
+    g_assert(pixels[5] == 235);
 
     g_strfreev(env);
 
