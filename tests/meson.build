@@ -10,7 +10,7 @@ loaders = configure_file(
 )
 
 test(
-    'Load minimal image, 1 pixel',
+    'minimal',
     minimal,
     env: [
         'GDK_PIXBUF_MODULE_FILE=' + meson.current_build_dir() + '/loaders.cache',
@@ -19,7 +19,7 @@ test(
 )
 
 test(
-    'Load minimal image, 1 pixel',
+    'basic',
     basic,
     env: [
         'GDK_PIXBUF_MODULE_FILE=' + meson.current_build_dir() + '/loaders.cache',

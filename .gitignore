@@ -1,1 +1,7 @@
 build/
+GPATH
+GRTAGS
+GTAGS
+*.png
+*.ppm
+*.tif

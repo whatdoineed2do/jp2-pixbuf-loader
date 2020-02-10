@@ -107,15 +107,11 @@ static GdkPixbuf *gdk_pixbuf__jp2_image_load(FILE *fp, GError **error)
 
 	// Get adjusts (could probably be a separate function)
 
-	int adjustR, adjustG, adjustB, adjustA;
+	int adjustR = 0, adjustG = 0, adjustB = 0, adjustA = 0;
 
 	if(has_alpha)
 	{
 		adjustA = (image->comps[image->numcomps -1].sgnd ? 1 << (image->comps[image->numcomps - 1].prec - 1) : 0);
-	}
-	else
-	{
-		adjustA = 0;
 	}
 
 	adjustR = (image->comps[0].sgnd ? 1 << (image->comps[0].prec - 1) : 0);
@@ -125,28 +121,25 @@ static GdkPixbuf *gdk_pixbuf__jp2_image_load(FILE *fp, GError **error)
 		adjustG = (image->comps[1].sgnd ? 1 << (image->comps[1].prec - 1) : 0);
 		adjustB = (image->comps[2].sgnd ? 1 << (image->comps[2].prec - 1) : 0);
 	}
-	else
-	{
-		adjustG = adjustB = 0;
-	}
 
 	// Get data
 
 	guint8 *data = g_malloc(sizeof(guint8) * (int) image->comps[0].w * (int) image->comps[0].h * image->numcomps); // 8 bit * width * height * number of components
 
-	for(int i = 0; i < (int) image->comps[0].w * (int) image->comps[0].h; i += image->numcomps)
+	int counter = 0;
+	for(int i = 0; i < (int) image->comps[0].w * (int) image->comps[0].h; i++)
 	{
-		data[i] = util_get(image, 0, i, adjustR);
+		data[counter++] = util_get(image, 0, i, adjustR, 255);
 
 		if(image->numcomps > 2)
 		{
-			data[i+1] = util_get(image, 1, i, adjustG);
-			data[i+2] = util_get(image, 2, i, adjustB);
+			data[counter++] = util_get(image, 1, i, adjustG, 255);
+			data[counter++] = util_get(image, 2, i, adjustB, 255);
 		}
 
 		if(has_alpha)
 		{
-			data[i+3] = util_get(image, image->numcomps - 1, i, adjustA);
+			data[counter++] = util_get(image, image->numcomps - 1, i, adjustA, 255);
 		}
 	}
 
@@ -254,7 +247,7 @@ void fill_info(GdkPixbufFormat *info)
 
 	info->description = "JPEG2000";
 	info->extensions  = extensions;
-	info->flags       = GDK_PIXBUF_FORMAT_WRITABLE | GDK_PIXBUF_FORMAT_THREADSAFE;
+	info->flags       = GDK_PIXBUF_FORMAT_THREADSAFE; // TODO: | GDK_PIXBUF_FORMAT_WRITABLE
 	info->license     = "LGPL";
 	info->mime_types  = mime_types;
 	info->name        = "jp2";

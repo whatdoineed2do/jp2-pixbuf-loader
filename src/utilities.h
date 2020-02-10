@@ -137,16 +137,16 @@ int util_rowstride(opj_image_t *image)
 }
 
 /**
- * Gets actual 8bit data out of the image; R, G, B, or A.
+ * Gets actual 8bit data out of the image; R, G, B, or A. Clamp to max.
  */
-int util_get(opj_image_t *image, int component, int index, int adjust)
+int util_get(opj_image_t *image, int component, int index, int adjust, int max)
 {
 	int v;
 
 	v = image->comps[component].data[index] + adjust;
-	if(v > 65535)
+	if(v > max)
 	{
-		v = 65535;
+		v = max;
 	}
 	else if(v < 0)
 	{

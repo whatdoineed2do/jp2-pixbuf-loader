@@ -56,9 +56,9 @@ gint main(gint argc, gchar **argv)
 
     g_assert(height == 1);
 
-    g_assert(pixels[0] == 182);
-    g_assert(pixels[1] == 106);
-    g_assert(pixels[2] == 29);
+    g_assert(pixels[0] == 182); // Becomes 80 after opacity is applied?
+    g_assert(pixels[1] == 106); // Becomes 47 after opacity is applied?
+    g_assert(pixels[2] == 29); // Becomes 13 after opacity is applied?
     g_assert(pixels[3] == 112);
 
     g_strfreev(env);

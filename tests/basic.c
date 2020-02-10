@@ -56,8 +56,6 @@ gint main(gint argc, gchar **argv)
 
     g_assert(height == 10);
 
-    g_print("%d %d %d", pixels[3], pixels[4], pixels[5]);
-
     g_assert(pixels[0] == 188);
     g_assert(pixels[1] == 188);
     g_assert(pixels[2] == 188);

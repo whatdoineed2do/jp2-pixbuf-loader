@@ -28,9 +28,15 @@ OpenJPEG is licensed under the 2-clauses BSD License.
 
 ### Debug
 
+Build project then generate loaders.cache.in:
+
+```
+gdk-pixbuf-query-loaders libpixbufloader-jp2.so > ../tests/loaders.cache.in
+```
+
 Run tests:
 
-`ninja test` or `meson test`
+`ninja test` or `meson test --print-errorlogs`
 
 Run tests with gdb:
 
@@ -42,4 +48,10 @@ Run tests with valgrind:
 
 ```
 meson test --wrap='valgrind --leak-check=full'
+```
+
+Run a specific test:
+
+```
+meson test basic --print-errorlogs
 ```
