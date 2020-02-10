@@ -25,7 +25,7 @@
 #include <string.h>
 #include <utilities.h>
 
-typedef struct  {
+typedef struct {
 	GdkPixbufModuleSizeFunc size_func;
 	GdkPixbufModuleUpdatedFunc update_func;
 	GdkPixbufModulePreparedFunc prepare_func;
@@ -34,6 +34,11 @@ typedef struct  {
 	GError **error;
 } JP2Context;
 
+typedef enum {
+	COLOR_SPACE_RGB = 1, // r,g,b, alpha optional
+	COLOR_SPACE_GRAY = 2, // g, alpha optional
+} COLOR_SPACE;
+
 static void free_buffer (guchar *pixels, gpointer data)
 {
 	g_free(pixels);
@@ -41,6 +46,7 @@ static void free_buffer (guchar *pixels, gpointer data)
 
 static GdkPixbuf *gdk_pixbuf__jp2_image_load(FILE *fp, GError **error)
 {
+	int codec_type;
 	GdkPixbuf *pixbuf = NULL;
 	opj_codec_t *codec = NULL;
 	opj_image_t *image = NULL;
@@ -57,7 +63,14 @@ static GdkPixbuf *gdk_pixbuf__jp2_image_load(FILE *fp, GError **error)
 		return FALSE;
 	}
 
-	codec = opj_create_decompress(util_identify(fp));
+	codec_type = util_identify(fp);
+	if(codec_type < 0)
+	{
+		util_destroy(codec, stream, image);
+		g_set_error(error, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_FAILED, "Unknown filetype!");
+		return FALSE;
+	}
+	codec = opj_create_decompress(codec_type);
 
 	#if DEBUG == TRUE
 		opj_set_info_handler(codec, info_callback, 00);
@@ -95,26 +108,34 @@ static GdkPixbuf *gdk_pixbuf__jp2_image_load(FILE *fp, GError **error)
 
 	opj_stream_destroy(stream);
 
+	/*g_print("max: %d\n", (1 << image->comps[0].prec) - 1);
+	g_print("cspc: %d\n", image->color_space);
+	g_print("cspc: %d\n", GDK_COLORSPACE_RGB);
+	g_print("comp: %d\n", image->numcomps);
+	g_print("%d\n", image->comps[0].data[0]);
+
+	return FALSE;*/
+
 	// Find colorspace
 
-	GdkColorspace colorspace = -1;
+	COLOR_SPACE colorspace = -1;
 
 	switch(image->color_space)
 	{
 		case OPJ_CLRSPC_UNKNOWN:
+		case OPJ_CLRSPC_UNSPECIFIED:
 			if(image->numcomps < 3)
 			{
-				goto fail; // TODO: support gray
+				colorspace = COLOR_SPACE_GRAY;
 			}
 			else
 			{
-				colorspace = GDK_COLORSPACE_RGB;
+				colorspace = COLOR_SPACE_RGB;
 			}
 			break;
 		case OPJ_CLRSPC_SRGB:
-			colorspace = GDK_COLORSPACE_RGB;
+			colorspace = COLOR_SPACE_RGB;
 			break;
-	fail:
 		default:
 			util_destroy(codec, stream, image);
 			g_set_error(error, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_FAILED, "Unsupported colorspace");
@@ -127,6 +148,7 @@ static GdkPixbuf *gdk_pixbuf__jp2_image_load(FILE *fp, GError **error)
 
 	// Get adjusts (could probably be a separate function)
 
+	int max = (1 << image->comps[0].prec) - 1;
 	int adjustR = 0, adjustG = 0, adjustB = 0, adjustA = 0;
 
 	if(has_alpha)
@@ -143,40 +165,65 @@ static GdkPixbuf *gdk_pixbuf__jp2_image_load(FILE *fp, GError **error)
 	}
 
 	// Get data
+	int comps_needed = 0;
+	if(colorspace == COLOR_SPACE_GRAY)
+	{
+		comps_needed = has_alpha ? 4 : 3;
+	}
+	else
+	{
+		comps_needed = image->numcomps;
+	}
 
-	guint8 *data = g_malloc(sizeof(guint8) * (int) image->comps[0].w * (int) image->comps[0].h * image->numcomps); // 8 bit * width * height * number of components
+	/*g_print("prec: %d", image->comps[0].prec);
+	g_print("%d %d", (int) image->comps[0].w , (int) image->comps[0].h);
+	return FALSE;*/
+
+	// 8 bit * width * height * number of components needed for RGB with or without alpha
+	guint8 *data = g_malloc(sizeof(guint8) * (int) image->comps[0].w * (int) image->comps[0].h * comps_needed);
 
 	int counter = 0;
 	for(int i = 0; i < (int) image->comps[0].w * (int) image->comps[0].h; i++)
 	{
-		data[counter++] = util_get(image, 0, i, adjustR, 255);
+		if(colorspace == COLOR_SPACE_RGB)
+		{
+			data[counter++] = util_get(image, 0, i, adjustR, max);
+		}
+		if(colorspace == COLOR_SPACE_GRAY)
+		{
+			data[counter++] = util_get(image, 0, i, adjustR, max);
+			data[counter++] = util_get(image, 0, i, adjustR, max);
+			data[counter++] = util_get(image, 0, i, adjustR, max);
+		}
 
 		if(image->numcomps > 2)
 		{
-			data[counter++] = util_get(image, 1, i, adjustG, 255);
-			data[counter++] = util_get(image, 2, i, adjustB, 255);
+			data[counter++] = util_get(image, 1, i, adjustG, max);
+			data[counter++] = util_get(image, 2, i, adjustB, max);
 		}
 
 		if(has_alpha)
 		{
-			data[counter++] = util_get(image, image->numcomps - 1, i, adjustA, 255);
+			data[counter++] = util_get(image, image->numcomps - 1, i, adjustA, max);
 		}
 	}
 
 	pixbuf = gdk_pixbuf_new_from_data(
 		(const guchar*) data,    // Actual data. RGB: {0, 0, 0}. RGBA: {0, 0, 0, 0}.
-		colorspace,              // Colorspace
+		GDK_COLORSPACE_RGB,      // Colorspace (only RGB supported, lol, what's the point)
 		has_alpha,               // has_alpha
 		8,                       // bits_per_sample
 		(int) image->comps[0].w, // width
 		(int) image->comps[0].h, // height
-		util_rowstride(image),   // rowstride: distance in bytes between row starts
+		util_rowstride(image, comps_needed),   // rowstride: distance in bytes between row starts
 		free_buffer,             // destroy function
 		NULL                     // closure data to pass to the destroy notification function
 	);
 
 	return pixbuf;
 }
+
+#if FALSE
 
 static gpointer gdk_pixbuf__jp2_image_begin_load
 (
@@ -207,7 +254,7 @@ static gboolean gdk_pixbuf__jp2_image_stop_load(gpointer context, GError **error
 static gboolean gdk_pixbuf__jp2_image_load_increment(gpointer context, const guchar *buf, guint size, GError **error)
 {
 	JP2Context *data = (JP2Context *) context;
-	
+
 	g_set_error (error, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_FAILED, "Bro, I just can't...");
 	return FALSE;
 }
@@ -235,6 +282,8 @@ static gboolean gdk_pixbuf__jp2_image_save_to_callback
 	return TRUE;
 }
 
+#endif
+
 /**
  * Module entry points - This is where it all starts
  */
@@ -242,7 +291,8 @@ static gboolean gdk_pixbuf__jp2_image_save_to_callback
 void fill_vtable(GdkPixbufModule *module)
 {
 	module->load             = gdk_pixbuf__jp2_image_load;
-	module->save             = gdk_pixbuf__jp2_image_save;
+	// TODO: consider implementing these
+	//module->save             = gdk_pixbuf__jp2_image_save;
 	//module->stop_load        = gdk_pixbuf__jp2_image_stop_load;
 	//module->begin_load       = gdk_pixbuf__jp2_image_begin_load;
 	//module->load_increment   = gdk_pixbuf__jp2_image_load_increment;
@@ -264,11 +314,13 @@ void fill_info(GdkPixbufFormat *info)
 		"image/jpm",
 		"image/jpx",
 		"image/jpeg2000",
+		"image/x-jp2-codestream",
 		NULL
 	};
 
 	static gchar *extensions[] =
 	{
+		"j2c",
 		"j2k",
 		"jp2",
 		"jpc",

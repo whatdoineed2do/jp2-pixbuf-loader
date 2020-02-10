@@ -1,6 +1,9 @@
 minimal = executable('minimal', 'minimal.c', link_with: pixbuf_loader_openjpeg, dependencies: [gdk_pixbuf, openjpeg])
 basic = executable('basic', 'basic.c', link_with: pixbuf_loader_openjpeg, dependencies: [gdk_pixbuf, openjpeg])
 relax = executable('relax', 'relax.c', link_with: pixbuf_loader_openjpeg, dependencies: [gdk_pixbuf, openjpeg])
+codestream = executable('codestream', 'codestream.c', link_with: pixbuf_loader_openjpeg, dependencies: [gdk_pixbuf, openjpeg])
+codestream_mono = executable('codestream_mono', 'codestream_mono.c', link_with: pixbuf_loader_openjpeg, dependencies: [gdk_pixbuf, openjpeg])
+codestream_color = executable('codestream_color', 'codestream_color.c', link_with: pixbuf_loader_openjpeg, dependencies: [gdk_pixbuf, openjpeg])
 
 loaders_data = configuration_data()
 loaders_data.set('MODULE_PATH', pixbuf_loader_openjpeg.full_path())
@@ -34,5 +37,32 @@ test(
     env: [
         'GDK_PIXBUF_MODULE_FILE=' + meson.current_build_dir() + '/loaders.cache',
         'TEST_FILE=' + meson.current_source_dir() + '/relax.jp2',
+    ],
+)
+
+test(
+    'codestream',
+    codestream,
+    env: [
+        'GDK_PIXBUF_MODULE_FILE=' + meson.current_build_dir() + '/loaders.cache',
+        'TEST_FILE=' + meson.current_source_dir() + '/codestream.j2k',
+    ],
+)
+
+test(
+    'codestream_mono',
+    codestream_mono,
+    env: [
+        'GDK_PIXBUF_MODULE_FILE=' + meson.current_build_dir() + '/loaders.cache',
+        'TEST_FILE=' + meson.current_source_dir() + '/codestream_mono.j2c',
+    ],
+)
+
+test(
+    'codestream_color',
+    codestream_color,
+    env: [
+        'GDK_PIXBUF_MODULE_FILE=' + meson.current_build_dir() + '/loaders.cache',
+        'TEST_FILE=' + meson.current_source_dir() + '/codestream_color.j2c',
     ],
 )

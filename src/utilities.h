@@ -33,6 +33,11 @@
 	#  define OPJ_FTELL(stream) ftell(stream)
 #endif
 
+#define JP2_RFC3745_MAGIC "\x00\x00\x00\x0c\x6a\x50\x20\x20\x0d\x0a\x87\x0a"
+#define JP2_MAGIC "\x0d\x0a\x87\x0a"
+/* position 45: "\xff\x52" */
+#define J2K_CODESTREAM_MAGIC "\xff\x4f\xff\x51"
+
 static OPJ_SIZE_T opj_read_from_file(void *p_buffer, OPJ_SIZE_T p_nb_bytes, FILE *p_file)
 {
 	OPJ_SIZE_T l_nb_read = fread(p_buffer, 1, p_nb_bytes, p_file);
@@ -123,17 +128,37 @@ void util_destroy(opj_stream_t* stream, opj_codec_t *codec, opj_image_t *image)
  */
 int util_identify(FILE *fp)
 {
-	// TODO: actually identify
+	int length;
+	unsigned char buffer[12];
 
-	return OPJ_CODEC_JP2;
+	memset(buffer, 0, 12);
+	length = fread(buffer, 1, 12, fp);
+	if(length != 12)
+	{
+		return -1;
+	}
+	fseek(fp, 0, SEEK_SET);
+
+	if(memcmp(buffer, JP2_RFC3745_MAGIC, 12) == 0 || memcmp(buffer, JP2_MAGIC, 4) == 0)
+	{
+		return OPJ_CODEC_JP2;
+	}
+	else if(memcmp(buffer, J2K_CODESTREAM_MAGIC, 4) == 0)
+	{
+		return OPJ_CODEC_J2K;
+	}
+
+	// TODO: OPJ_CODEC_JPT? OPJ_CODEC_JPP? OPJ_CODEC_JPX? OPJ_CODEC_JPH?
+
+	return -1;
 }
 
 /**
  * Calculate rowstride for image
  */
-int util_rowstride(opj_image_t *image)
+int util_rowstride(opj_image_t *image, int comps_needed)
 {
-	return ((image->comps[0].w * image->numcomps * image->comps[0].prec + 7U) / 8U);
+	return ((image->comps[0].w * comps_needed * image->comps[0].prec + 7U) / 8U);
 }
 
 /**

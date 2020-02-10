@@ -5,3 +5,8 @@ GTAGS
 *.png
 *.ppm
 *.tif
+*.pgm
+*.xcf
+*.pnm
+*.webp
+
