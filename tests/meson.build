@@ -1,5 +1,6 @@
 minimal = executable('minimal', 'minimal.c', link_with: pixbuf_loader_openjpeg, dependencies: [gdk_pixbuf, openjpeg])
 basic = executable('basic', 'basic.c', link_with: pixbuf_loader_openjpeg, dependencies: [gdk_pixbuf, openjpeg])
+relax = executable('relax', 'relax.c', link_with: pixbuf_loader_openjpeg, dependencies: [gdk_pixbuf, openjpeg])
 
 loaders_data = configuration_data()
 loaders_data.set('MODULE_PATH', pixbuf_loader_openjpeg.full_path())
@@ -27,3 +28,11 @@ test(
     ],
 )
 
+test(
+    'relax',
+    relax,
+    env: [
+        'GDK_PIXBUF_MODULE_FILE=' + meson.current_build_dir() + '/loaders.cache',
+        'TEST_FILE=' + meson.current_source_dir() + '/relax.jp2',
+    ],
+)

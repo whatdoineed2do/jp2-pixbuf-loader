@@ -25,6 +25,15 @@
 #include <string.h>
 #include <utilities.h>
 
+typedef struct  {
+	GdkPixbufModuleSizeFunc size_func;
+	GdkPixbufModuleUpdatedFunc update_func;
+	GdkPixbufModulePreparedFunc prepare_func;
+	gpointer user_data;
+	GdkPixbuf *pixbuf;
+	GError **error;
+} JP2Context;
+
 static void free_buffer (guchar *pixels, gpointer data)
 {
 	g_free(pixels);
@@ -92,9 +101,20 @@ static GdkPixbuf *gdk_pixbuf__jp2_image_load(FILE *fp, GError **error)
 
 	switch(image->color_space)
 	{
+		case OPJ_CLRSPC_UNKNOWN:
+			if(image->numcomps < 3)
+			{
+				goto fail; // TODO: support gray
+			}
+			else
+			{
+				colorspace = GDK_COLORSPACE_RGB;
+			}
+			break;
 		case OPJ_CLRSPC_SRGB:
 			colorspace = GDK_COLORSPACE_RGB;
 			break;
+	fail:
 		default:
 			util_destroy(codec, stream, image);
 			g_set_error(error, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_FAILED, "Unsupported colorspace");
@@ -166,17 +186,30 @@ static gpointer gdk_pixbuf__jp2_image_begin_load
 	gpointer user_data,
 	GError **error
 ) {
-	return NULL;
+	JP2Context *context = g_new0 (JP2Context, 1);
+	context->size_func = size_func;
+	context->prepare_func = prepare_func;
+	context->update_func  = update_func;
+	context->user_data = user_data;
+	return context;
 }
 
 static gboolean gdk_pixbuf__jp2_image_stop_load(gpointer context, GError **error)
 {
+	JP2Context *data = (JP2Context *) context;
+	g_return_val_if_fail(data != NULL, TRUE);
+	if (data->pixbuf) {
+		g_object_unref(data->pixbuf);
+	}
 	return TRUE;
 }
 
 static gboolean gdk_pixbuf__jp2_image_load_increment(gpointer context, const guchar *buf, guint size, GError **error)
 {
-	return TRUE;
+	JP2Context *data = (JP2Context *) context;
+	
+	g_set_error (error, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_FAILED, "Bro, I just can't...");
+	return FALSE;
 }
 
 static gboolean gdk_pixbuf__jp2_image_save
@@ -210,10 +243,10 @@ void fill_vtable(GdkPixbufModule *module)
 {
 	module->load             = gdk_pixbuf__jp2_image_load;
 	module->save             = gdk_pixbuf__jp2_image_save;
-	module->stop_load        = gdk_pixbuf__jp2_image_stop_load;
-	module->begin_load       = gdk_pixbuf__jp2_image_begin_load;
-	module->load_increment   = gdk_pixbuf__jp2_image_load_increment;
-	module->save_to_callback = gdk_pixbuf__jp2_image_save_to_callback;
+	//module->stop_load        = gdk_pixbuf__jp2_image_stop_load;
+	//module->begin_load       = gdk_pixbuf__jp2_image_begin_load;
+	//module->load_increment   = gdk_pixbuf__jp2_image_load_increment;
+	//module->save_to_callback = gdk_pixbuf__jp2_image_save_to_callback;
 }
 
 void fill_info(GdkPixbufFormat *info)
