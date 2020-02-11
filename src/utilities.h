@@ -158,27 +158,33 @@ int util_identify(FILE *fp)
  */
 int util_rowstride(opj_image_t *image, int comps_needed)
 {
-	return ((image->comps[0].w * comps_needed * image->comps[0].prec + 7U) / 8U);
+	return image->comps[0].w * comps_needed;
+	// return ((image->comps[0].w * comps_needed * image->comps[0].prec + 7U) / 8U);
 }
 
 /**
- * Gets actual 8bit data out of the image; R, G, B, or A. Clamp to max.
+ * Gets actual 8bit data out of the image; R, G, B, or A.
  */
-int util_get(opj_image_t *image, int component, int index, int adjust, int max)
+int util_get(opj_image_t *image, int component, int index, int adjust)
+{;
+	return image->comps[component].data[index] + adjust;
+}
+
+/**
+ * Clamp value between 0 and max
+ */
+int util_clamp(int value, int max)
 {
-	int v;
-
-	v = image->comps[component].data[index] + adjust;
-	if(v > max)
+	if(value > max)
 	{
-		v = max;
+		value = max;
 	}
-	else if(v < 0)
+	else if(value < 0)
 	{
-		v = 0;
+		value = 0;
 	}
 
-	return v;
+	return value;
 }
 
 // Debug functions

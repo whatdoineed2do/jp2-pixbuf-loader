@@ -37,6 +37,7 @@ typedef struct {
 typedef enum {
 	COLOR_SPACE_RGB = 1, // r,g,b, alpha optional
 	COLOR_SPACE_GRAY = 2, // g, alpha optional
+	COLOR_SPACE_SYCC = 3, // Y, Cb,Cr, (alpha optional?)
 } COLOR_SPACE;
 
 static void free_buffer (guchar *pixels, gpointer data)
@@ -108,13 +109,13 @@ static GdkPixbuf *gdk_pixbuf__jp2_image_load(FILE *fp, GError **error)
 
 	opj_stream_destroy(stream);
 
-	/*g_print("max: %d\n", (1 << image->comps[0].prec) - 1);
+	/*
+	g_print("max: %d\n", (1 << image->comps[0].prec) - 1);
 	g_print("cspc: %d\n", image->color_space);
-	g_print("cspc: %d\n", GDK_COLORSPACE_RGB);
 	g_print("comp: %d\n", image->numcomps);
-	g_print("%d\n", image->comps[0].data[0]);
-
-	return FALSE;*/
+	g_print("alpha: %d\n", (int) (image->numcomps == 4 || image->numcomps == 2));
+	//g_print("%d %d %d\n", image->comps[0].data[0], image->comps[1].data[0], image->comps[2].data[0]);
+	*/
 
 	// Find colorspace
 
@@ -135,6 +136,9 @@ static GdkPixbuf *gdk_pixbuf__jp2_image_load(FILE *fp, GError **error)
 			break;
 		case OPJ_CLRSPC_SRGB:
 			colorspace = COLOR_SPACE_RGB;
+			break;
+		case OPJ_CLRSPC_SYCC:
+			colorspace = COLOR_SPACE_SYCC;
 			break;
 		default:
 			util_destroy(codec, stream, image);
@@ -164,7 +168,8 @@ static GdkPixbuf *gdk_pixbuf__jp2_image_load(FILE *fp, GError **error)
 		adjustB = (image->comps[2].sgnd ? 1 << (image->comps[2].prec - 1) : 0);
 	}
 
-	// Get data
+	// Get data (could probably be a separate function, or several)
+
 	int comps_needed = 0;
 	if(colorspace == COLOR_SPACE_GRAY)
 	{
@@ -174,50 +179,75 @@ static GdkPixbuf *gdk_pixbuf__jp2_image_load(FILE *fp, GError **error)
 	{
 		comps_needed = image->numcomps;
 	}
-
-	/*g_print("prec: %d", image->comps[0].prec);
+	
+	/*
+	g_print("rowstride: %d\n", util_rowstride(image, comps_needed));
+	g_print("prec: %d\n", image->comps[0].prec);
+	g_print("adj: %d %d %d\n", adjustR, adjustG, adjustB);
 	g_print("%d %d", (int) image->comps[0].w , (int) image->comps[0].h);
 	return FALSE;*/
 
 	// 8 bit * width * height * number of components needed for RGB with or without alpha
 	guint8 *data = g_malloc(sizeof(guint8) * (int) image->comps[0].w * (int) image->comps[0].h * comps_needed);
 
+	int buffer = 0;
 	int counter = 0;
+	double Y = 0, Cb = 0, Cr = 0;
 	for(int i = 0; i < (int) image->comps[0].w * (int) image->comps[0].h; i++)
 	{
-		if(colorspace == COLOR_SPACE_RGB)
+		switch(colorspace)
 		{
-			data[counter++] = util_get(image, 0, i, adjustR, max);
-		}
-		if(colorspace == COLOR_SPACE_GRAY)
-		{
-			data[counter++] = util_get(image, 0, i, adjustR, max);
-			data[counter++] = util_get(image, 0, i, adjustR, max);
-			data[counter++] = util_get(image, 0, i, adjustR, max);
-		}
+			case COLOR_SPACE_GRAY:
+				if(image->comps[0].prec == 12)
+				{
+					buffer = util_clamp(util_get(image, 0, i, adjustR), max) / 16;
+					data[counter++] = buffer;
+					data[counter++] = buffer;
+					data[counter++] = buffer;
+				}
+				else
+				{
+					buffer = util_clamp(util_get(image, 0, i, adjustR), max);
+					data[counter++] = buffer;
+					data[counter++] = buffer;
+					data[counter++] = buffer;
+				}
+				break;
+			case COLOR_SPACE_SYCC:
+				// TODO: doesn't really work, see convert.c:420
+				Y = util_get(image, 0, i, adjustR); Cb = util_get(image, 1, i, adjustR); Cr = util_get(image, 2, i, adjustR);
+				data[counter++] = util_clamp((int) (Y + 1.40200 * (Cr - 0x80)), 255);
+				data[counter++] = util_clamp((int) (Y - 0.34414 * (Cb - 0x80) - 0.71414 * (Cr - 0x80)), 255);
+				data[counter++] = util_clamp((int) (Y - 0.34414 * (Cb - 0x80) - 0.71414 * (Cr - 0x80)), 255);
+				break;
+			default:
+				data[counter++] = util_clamp(util_get(image, 0, i, adjustR), max);
 
-		if(image->numcomps > 2)
-		{
-			data[counter++] = util_get(image, 1, i, adjustG, max);
-			data[counter++] = util_get(image, 2, i, adjustB, max);
+				if(image->numcomps > 2)
+				{
+					data[counter++] = util_clamp(util_get(image, 1, i, adjustG), max);
+					data[counter++] = util_clamp(util_get(image, 2, i, adjustB), max);
+				}
+
+				break;
 		}
 
 		if(has_alpha)
 		{
-			data[counter++] = util_get(image, image->numcomps - 1, i, adjustA, max);
+			data[counter++] = util_clamp(util_get(image, image->numcomps - 1, i, adjustA), max);
 		}
 	}
 
 	pixbuf = gdk_pixbuf_new_from_data(
-		(const guchar*) data,    // Actual data. RGB: {0, 0, 0}. RGBA: {0, 0, 0, 0}.
-		GDK_COLORSPACE_RGB,      // Colorspace (only RGB supported, lol, what's the point)
-		has_alpha,               // has_alpha
-		8,                       // bits_per_sample
-		(int) image->comps[0].w, // width
-		(int) image->comps[0].h, // height
-		util_rowstride(image, comps_needed),   // rowstride: distance in bytes between row starts
-		free_buffer,             // destroy function
-		NULL                     // closure data to pass to the destroy notification function
+		(const guchar*) data,                // Actual data. RGB: {0, 0, 0}. RGBA: {0, 0, 0, 0}.
+		GDK_COLORSPACE_RGB,                  // Colorspace (only RGB supported, lol, what's the point)
+		has_alpha,                           // has_alpha
+		8,                                   // bits_per_sample (only 8 bit supported, again, why even bother)
+		(int) image->comps[0].w,             // width
+		(int) image->comps[0].h,             // height
+		util_rowstride(image, comps_needed), // rowstride: distance in bytes between row starts
+		free_buffer,                         // destroy function
+		NULL                                 // closure data to pass to the destroy notification function
 	);
 
 	return pixbuf;

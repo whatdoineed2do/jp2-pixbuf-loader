@@ -4,6 +4,9 @@ relax = executable('relax', 'relax.c', link_with: pixbuf_loader_openjpeg, depend
 codestream = executable('codestream', 'codestream.c', link_with: pixbuf_loader_openjpeg, dependencies: [gdk_pixbuf, openjpeg])
 codestream_mono = executable('codestream_mono', 'codestream_mono.c', link_with: pixbuf_loader_openjpeg, dependencies: [gdk_pixbuf, openjpeg])
 codestream_color = executable('codestream_color', 'codestream_color.c', link_with: pixbuf_loader_openjpeg, dependencies: [gdk_pixbuf, openjpeg])
+advanced = executable('advanced', 'advanced.c', link_with: pixbuf_loader_openjpeg, dependencies: [gdk_pixbuf, openjpeg])
+complex = executable('complex', 'complex.c', link_with: pixbuf_loader_openjpeg, dependencies: [gdk_pixbuf, openjpeg])
+normal = executable('normal', 'normal.c', link_with: pixbuf_loader_openjpeg, dependencies: [gdk_pixbuf, openjpeg])
 
 loaders_data = configuration_data()
 loaders_data.set('MODULE_PATH', pixbuf_loader_openjpeg.full_path())
@@ -64,5 +67,32 @@ test(
     env: [
         'GDK_PIXBUF_MODULE_FILE=' + meson.current_build_dir() + '/loaders.cache',
         'TEST_FILE=' + meson.current_source_dir() + '/codestream_color.j2c',
+    ],
+)
+
+test(
+    'advanced',
+    advanced,
+    env: [
+        'GDK_PIXBUF_MODULE_FILE=' + meson.current_build_dir() + '/loaders.cache',
+        'TEST_FILE=' + meson.current_source_dir() + '/advanced.jp2',
+    ],
+)
+
+test(
+    'complex',
+    complex,
+    env: [
+        'GDK_PIXBUF_MODULE_FILE=' + meson.current_build_dir() + '/loaders.cache',
+        'TEST_FILE=' + meson.current_source_dir() + '/complex.jp2',
+    ],
+)
+
+test(
+    'normal',
+    normal,
+    env: [
+        'GDK_PIXBUF_MODULE_FILE=' + meson.current_build_dir() + '/loaders.cache',
+        'TEST_FILE=' + meson.current_source_dir() + '/normal.jp2',
     ],
 )
