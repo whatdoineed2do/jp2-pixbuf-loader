@@ -23,7 +23,8 @@
 
 #include <openjpeg.h>
 #include <string.h>
-#include <utilities.h>
+#include <util.h>
+#include <color.h>
 
 typedef struct {
 	GdkPixbufModuleSizeFunc size_func;
@@ -33,12 +34,6 @@ typedef struct {
 	GdkPixbuf *pixbuf;
 	GError **error;
 } JP2Context;
-
-typedef enum {
-	COLOR_SPACE_RGB = 1, // r,g,b, alpha optional
-	COLOR_SPACE_GRAY = 2, // g, alpha optional
-	COLOR_SPACE_SYCC = 3, // Y, Cb,Cr, (alpha optional?)
-} COLOR_SPACE;
 
 static void free_buffer (guchar *pixels, gpointer data)
 {
@@ -108,146 +103,57 @@ static GdkPixbuf *gdk_pixbuf__jp2_image_load(FILE *fp, GError **error)
 	}
 
 	opj_stream_destroy(stream);
+	opj_destroy_codec(codec);
 
-	/*
-	g_print("max: %d\n", (1 << image->comps[0].prec) - 1);
-	g_print("cspc: %d\n", image->color_space);
-	g_print("comp: %d\n", image->numcomps);
-	g_print("alpha: %d\n", (int) (image->numcomps == 4 || image->numcomps == 2));
-	//g_print("%d %d %d\n", image->comps[0].data[0], image->comps[1].data[0], image->comps[2].data[0]);
-	*/
+	// Get components and colorspace needed to convert to RGB
 
-	// Find colorspace
-
+	int components = -1;
 	COLOR_SPACE colorspace = -1;
-
-	switch(image->color_space)
+	if(!color_info(image, &components, &colorspace))
 	{
-		case OPJ_CLRSPC_UNKNOWN:
-		case OPJ_CLRSPC_UNSPECIFIED:
-			if(image->numcomps < 3)
-			{
-				colorspace = COLOR_SPACE_GRAY;
-			}
-			else
-			{
-				colorspace = COLOR_SPACE_RGB;
-			}
+		util_destroy(NULL, NULL, image);
+		g_set_error(error, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_FAILED, "Unsupported colorspace");
+		return FALSE;
+	}
+
+	// Allocate space for GdkPixbuf RGB
+
+	guint8 *data = g_malloc(sizeof(guint8) * (int) image->comps[0].w * (int) image->comps[0].h * components);
+
+	// Convert image to RGB depending on the colorspace
+
+	switch(colorspace)
+	{
+		case COLOR_SPACE_RGB:
+			color_convert_rgb(image, data);
 			break;
-		case OPJ_CLRSPC_SRGB:
-			colorspace = COLOR_SPACE_RGB;
+		case COLOR_SPACE_GRAY:
+			color_convert_gray(image, data);
 			break;
-		case OPJ_CLRSPC_SYCC:
-			colorspace = COLOR_SPACE_SYCC;
+		case COLOR_SPACE_GRAY12:
+			color_convert_gray12(image, data);
 			break;
-		default:
-			util_destroy(codec, stream, image);
-			g_set_error(error, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_FAILED, "Unsupported colorspace");
+		case COLOR_SPACE_SYCC420:
 			return FALSE;
-	}
-
-	// Check if has_alpha
-
-	gboolean has_alpha = (image->numcomps == 4 || image->numcomps == 2);
-
-	// Get adjusts (could probably be a separate function)
-
-	int max = (1 << image->comps[0].prec) - 1;
-	int adjustR = 0, adjustG = 0, adjustB = 0, adjustA = 0;
-
-	if(has_alpha)
-	{
-		adjustA = (image->comps[image->numcomps -1].sgnd ? 1 << (image->comps[image->numcomps - 1].prec - 1) : 0);
-	}
-
-	adjustR = (image->comps[0].sgnd ? 1 << (image->comps[0].prec - 1) : 0);
-
-	if(image->numcomps > 2)
-	{
-		adjustG = (image->comps[1].sgnd ? 1 << (image->comps[1].prec - 1) : 0);
-		adjustB = (image->comps[2].sgnd ? 1 << (image->comps[2].prec - 1) : 0);
-	}
-
-	// Get data (could probably be a separate function, or several)
-
-	int comps_needed = 0;
-	if(colorspace == COLOR_SPACE_GRAY)
-	{
-		comps_needed = has_alpha ? 4 : 3;
-	}
-	else
-	{
-		comps_needed = image->numcomps;
-	}
-	
-	/*
-	g_print("rowstride: %d\n", util_rowstride(image, comps_needed));
-	g_print("prec: %d\n", image->comps[0].prec);
-	g_print("adj: %d %d %d\n", adjustR, adjustG, adjustB);
-	g_print("%d %d", (int) image->comps[0].w , (int) image->comps[0].h);
-	return FALSE;*/
-
-	// 8 bit * width * height * number of components needed for RGB with or without alpha
-	guint8 *data = g_malloc(sizeof(guint8) * (int) image->comps[0].w * (int) image->comps[0].h * comps_needed);
-
-	int buffer = 0;
-	int counter = 0;
-	double Y = 0, Cb = 0, Cr = 0;
-	for(int i = 0; i < (int) image->comps[0].w * (int) image->comps[0].h; i++)
-	{
-		switch(colorspace)
-		{
-			case COLOR_SPACE_GRAY:
-				if(image->comps[0].prec == 12)
-				{
-					buffer = util_clamp(util_get(image, 0, i, adjustR), max) / 16;
-					data[counter++] = buffer;
-					data[counter++] = buffer;
-					data[counter++] = buffer;
-				}
-				else
-				{
-					buffer = util_clamp(util_get(image, 0, i, adjustR), max);
-					data[counter++] = buffer;
-					data[counter++] = buffer;
-					data[counter++] = buffer;
-				}
-				break;
-			case COLOR_SPACE_SYCC:
-				// TODO: doesn't really work, see convert.c:420
-				Y = util_get(image, 0, i, adjustR); Cb = util_get(image, 1, i, adjustR); Cr = util_get(image, 2, i, adjustR);
-				data[counter++] = util_clamp((int) (Y + 1.40200 * (Cr - 0x80)), 255);
-				data[counter++] = util_clamp((int) (Y - 0.34414 * (Cb - 0x80) - 0.71414 * (Cr - 0x80)), 255);
-				data[counter++] = util_clamp((int) (Y - 0.34414 * (Cb - 0x80) - 0.71414 * (Cr - 0x80)), 255);
-				break;
-			default:
-				data[counter++] = util_clamp(util_get(image, 0, i, adjustR), max);
-
-				if(image->numcomps > 2)
-				{
-					data[counter++] = util_clamp(util_get(image, 1, i, adjustG), max);
-					data[counter++] = util_clamp(util_get(image, 2, i, adjustB), max);
-				}
-
-				break;
-		}
-
-		if(has_alpha)
-		{
-			data[counter++] = util_clamp(util_get(image, image->numcomps - 1, i, adjustA), max);
-		}
+			break;
+		case COLOR_SPACE_SYCC422:
+			return FALSE;
+			break;
+		case COLOR_SPACE_SYCC444:
+			return FALSE;
+			break;
 	}
 
 	pixbuf = gdk_pixbuf_new_from_data(
-		(const guchar*) data,                // Actual data. RGB: {0, 0, 0}. RGBA: {0, 0, 0, 0}.
-		GDK_COLORSPACE_RGB,                  // Colorspace (only RGB supported, lol, what's the point)
-		has_alpha,                           // has_alpha
-		8,                                   // bits_per_sample (only 8 bit supported, again, why even bother)
-		(int) image->comps[0].w,             // width
-		(int) image->comps[0].h,             // height
-		util_rowstride(image, comps_needed), // rowstride: distance in bytes between row starts
-		free_buffer,                         // destroy function
-		NULL                                 // closure data to pass to the destroy notification function
+		(const guchar*) data,                           // Actual data. RGB: {0, 0, 0}. RGBA: {0, 0, 0, 0}.
+		GDK_COLORSPACE_RGB,                             // Colorspace (only RGB supported, lol, what's the point)
+		(image->numcomps == 4 || image->numcomps == 2), // has_alpha
+		8,                                              // bits_per_sample (only 8 bit supported, again, why even bother)
+		(int) image->comps[0].w,                        // width
+		(int) image->comps[0].h,                        // height
+		util_rowstride(image, components),              // rowstride: distance in bytes between row starts
+		free_buffer,                                    // destroy function
+		NULL                                            // closure data to pass to the destroy notification function
 	);
 
 	return pixbuf;

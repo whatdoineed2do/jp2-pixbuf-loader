@@ -17,6 +17,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#ifndef UTIL_H
+#define UTIL_H
+
 #include <openjpeg.h>
 
 // The following defines and functions were copied from openjpeg.c
@@ -79,6 +82,7 @@ static OPJ_SIZE_T opj_write_from_file(void *p_buffer, OPJ_SIZE_T p_nb_bytes, FIL
 }
 
 // End of defines and functions copied from openjpeg.c
+
 
 /**
  * Create stream from file pointer.
@@ -163,14 +167,6 @@ int util_rowstride(opj_image_t *image, int comps_needed)
 }
 
 /**
- * Gets actual 8bit data out of the image; R, G, B, or A.
- */
-int util_get(opj_image_t *image, int component, int index, int adjust)
-{;
-	return image->comps[component].data[index] + adjust;
-}
-
-/**
  * Clamp value between 0 and max
  */
 int util_clamp(int value, int max)
@@ -209,3 +205,4 @@ int util_clamp(int value, int max)
 	}
 #endif
 
+#endif
