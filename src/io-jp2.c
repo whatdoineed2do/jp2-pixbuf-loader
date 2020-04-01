@@ -134,13 +134,13 @@ static GdkPixbuf *gdk_pixbuf__jp2_image_load(FILE *fp, GError **error)
 			color_convert_gray12(image, data);
 			break;
 		case COLOR_SPACE_SYCC420:
-			return FALSE;
+			color_convert_sycc420(image, data);
 			break;
 		case COLOR_SPACE_SYCC422:
-			return FALSE;
+			color_convert_sycc422(image, data);
 			break;
 		case COLOR_SPACE_SYCC444:
-			return FALSE;
+			color_convert_sycc444(image, data);
 			break;
 	}
 

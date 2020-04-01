@@ -55,10 +55,13 @@ gint main(gint argc, gchar **argv)
     g_assert(width == 10);
 
     g_assert(height == 10);
-    */
-    g_assert(pixels[0] == 158);
-    g_assert(pixels[1] == 168);
-    g_assert(pixels[2] == 186);
+
+    g_assert(pixels[0] == 188);
+    g_assert(pixels[1] == 188);
+    g_assert(pixels[2] == 188);
+    g_assert(pixels[3] == 235);
+    g_assert(pixels[4] == 235);
+    g_assert(pixels[5] == 235);*/
 
     g_strfreev(env);
 

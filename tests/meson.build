@@ -7,6 +7,7 @@ codestream_color = executable('codestream_color', 'codestream_color.c', link_wit
 advanced = executable('advanced', 'advanced.c', link_with: pixbuf_loader_openjpeg, dependencies: [gdk_pixbuf, openjpeg])
 complex = executable('complex', 'complex.c', link_with: pixbuf_loader_openjpeg, dependencies: [gdk_pixbuf, openjpeg])
 normal = executable('normal', 'normal.c', link_with: pixbuf_loader_openjpeg, dependencies: [gdk_pixbuf, openjpeg])
+large = executable('large', 'large.c', link_with: pixbuf_loader_openjpeg, dependencies: [gdk_pixbuf, openjpeg])
 
 loaders_data = configuration_data()
 loaders_data.set('MODULE_PATH', pixbuf_loader_openjpeg.full_path())
@@ -96,3 +97,13 @@ test(
         'TEST_FILE=' + meson.current_source_dir() + '/normal.jp2',
     ],
 )
+
+test(
+    'large',
+    large,
+    env: [
+        'GDK_PIXBUF_MODULE_FILE=' + meson.current_build_dir() + '/loaders.cache',
+        'TEST_FILE=' + meson.current_source_dir() + '/large.jpf',
+    ],
+)
+

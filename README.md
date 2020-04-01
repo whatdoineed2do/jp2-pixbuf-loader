@@ -7,11 +7,17 @@ Note: by default there's already some JPEG2000 support in GdkPixbuf, but that us
 
 ## Installing
 
+### Option 1. Compiling
+
 ```
 meson build && cd build && ninja install
 ```
 
-TODO: AUR package
+### Option 2. Arch linux / AUR:
+
+```
+sudo aura -A jp2-pixbuf-loader -x
+```
 
 ## Copying / License
 
@@ -55,3 +61,14 @@ Run a specific test:
 ```
 meson test basic --print-errorlogs
 ```
+
+#### Todo
+
+- Better tests
+- Tests and testfiles for sYCC422 and sYCC444
+- Implement image_save;
+- Implement image_stop_load;
+- Implement image_begin_load;
+- Implement image_load_increment;
+- Implement image_save_to_callback;
+
