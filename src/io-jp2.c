@@ -148,15 +148,15 @@ static GdkPixbuf *gdk_pixbuf__jp2_image_load(FILE *fp, GError **error)
 	}
 
 	pixbuf = gdk_pixbuf_new_from_data(
-		(const guchar*) data,                           // Actual data. RGB: {0, 0, 0}. RGBA: {0, 0, 0, 0}.
-		GDK_COLORSPACE_RGB,                             // Colorspace (only RGB supported, lol, what's the point)
+		(const guchar*) data,                 // Actual data. RGB: {0, 0, 0}. RGBA: {0, 0, 0, 0}.
+		GDK_COLORSPACE_RGB,                   // Colorspace (only RGB supported, lol, what's the point)
 		(components == 4 || components == 2), // has_alpha
-		8,                                              // bits_per_sample (only 8 bit supported, again, why even bother)
-		(int) image->comps[0].w,                        // width
-		(int) image->comps[0].h,                        // height
-		util_rowstride(image, components),              // rowstride: distance in bytes between row starts
-		free_buffer,                                    // destroy function
-		NULL                                            // closure data to pass to the destroy notification function
+		8,                                    // bits_per_sample (only 8 bit supported, again, why even bother)
+		(int) image->comps[0].w,              // width
+		(int) image->comps[0].h,              // height
+		util_rowstride(image, components),    // rowstride: distance in bytes between row starts
+		free_buffer,                          // destroy function
+		NULL                                  // closure data to pass to the destroy notification function
 	);
 
 	return pixbuf;

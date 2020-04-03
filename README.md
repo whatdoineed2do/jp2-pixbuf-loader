@@ -67,6 +67,8 @@ meson test basic --print-errorlogs
 - Better tests
 - Tests and testfiles for sYCC422 and sYCC444
 - Support for e-YCC? Need testfiles
+- Support for cielab? Need testfiles
+- icc profile?
 - Implement image_save;
 - Implement image_stop_load;
 - Implement image_begin_load;

@@ -109,10 +109,10 @@ gboolean color_info(opj_image_t *image, int *components, COLOR_SPACE *colorspace
 				// C's XRsiz and YRsiz has to match MYK's
 				(image->comps[0].dx != image->comps[1].dx) ||
 				(image->comps[0].dx != image->comps[2].dx) ||
-        		(image->comps[0].dx != image->comps[3].dx) ||
-        		(image->comps[0].dy != image->comps[1].dy) ||
-        		(image->comps[0].dy != image->comps[2].dy) ||
-        		(image->comps[0].dy != image->comps[3].dy)
+				(image->comps[0].dx != image->comps[3].dx) ||
+				(image->comps[0].dy != image->comps[1].dy) ||
+				(image->comps[0].dy != image->comps[2].dy) ||
+				(image->comps[0].dy != image->comps[3].dy)
 			) {
 				return FALSE;
 			}
@@ -165,19 +165,19 @@ void color_convert_cmyk(opj_image_t *image, guint8 *data)
 {
 	int counter = 0;
 	float C, M, Y, K;
-    float sC, sM, sY, sK;
+	float sC, sM, sY, sK;
 
-    sC = 1.0F / (float)((1 << image->comps[0].prec) - 1);
-    sM = 1.0F / (float)((1 << image->comps[1].prec) - 1);
-    sY = 1.0F / (float)((1 << image->comps[2].prec) - 1);
-    sK = 1.0F / (float)((1 << image->comps[3].prec) - 1);
+	sC = 1.0F / (float)((1 << image->comps[0].prec) - 1);
+	sM = 1.0F / (float)((1 << image->comps[1].prec) - 1);
+	sY = 1.0F / (float)((1 << image->comps[2].prec) - 1);
+	sK = 1.0F / (float)((1 << image->comps[3].prec) - 1);
 
 	for(int i = 0; i < (int) image->comps[0].w * (int) image->comps[0].h; i++)
 	{
 		C = 1.0F - (float)(image->comps[0].data[i]) * sC;
-        M = 1.0F - (float)(image->comps[1].data[i]) * sM;
-        Y = 1.0F - (float)(image->comps[2].data[i]) * sY;
-        K = 1.0F - (float)(image->comps[3].data[i]) * sK;
+		M = 1.0F - (float)(image->comps[1].data[i]) * sM;
+		Y = 1.0F - (float)(image->comps[2].data[i]) * sY;
+		K = 1.0F - (float)(image->comps[3].data[i]) * sK;
 
 		data[counter++] = (int)(255.0F * C * K);
 		data[counter++] = (int)(255.0F * M * K);
@@ -240,12 +240,12 @@ void color_convert_gray12(opj_image_t *image, guint8 *data)
  */
 void color_convert_sycc(guint8 *data, int pos, int offset, int upb, int y, int cb, int cr)
 {
-    cb -= offset;
-    cr -= offset;
+	cb -= offset;
+	cr -= offset;
 
-    data[pos] = util_clamp(y + (int)(1.402 * (float)cr), upb);
-    data[pos+1] = util_clamp(y - (int)(0.344 * (float)cb + 0.714 * (float)cr), upb);
-    data[pos+2] = util_clamp(y + (int)(1.772 * (float)cb), upb);
+	data[pos] = util_clamp(y + (int)(1.402 * (float)cr), upb);
+	data[pos+1] = util_clamp(y - (int)(0.344 * (float)cb + 0.714 * (float)cr), upb);
+	data[pos+2] = util_clamp(y + (int)(1.772 * (float)cb), upb);
 }
 
 /*
@@ -253,87 +253,87 @@ void color_convert_sycc(guint8 *data, int pos, int offset, int upb, int y, int c
  */
 void color_convert_sycc420(opj_image_t *image, guint8 *data)
 {
-    const int *base, *y, *cb, *cr, *ny;
-    size_t maxw, maxh, offx, loopmaxw, offy, loopmaxh;
-    int offset, upb;
-    size_t i;
+	const int *base, *y, *cb, *cr, *ny;
+	size_t maxw, maxh, offx, loopmaxw, offy, loopmaxh;
+	int offset, upb;
+	size_t i;
 
-    offset = 1 << ((int)image->comps[0].prec - 1);
-    upb = (1 << (int)image->comps[0].prec) - 1;
+	offset = 1 << ((int)image->comps[0].prec - 1);
+	upb = (1 << (int)image->comps[0].prec) - 1;
 
 	maxw = (size_t)image->comps[0].w;
-    maxh = (size_t)image->comps[0].h;
+	maxh = (size_t)image->comps[0].h;
 
 	base = image->comps[0].data;
 	y = image->comps[0].data;
-    cb = image->comps[1].data;
-    cr = image->comps[2].data;
+	cb = image->comps[1].data;
+	cr = image->comps[2].data;
 
-    offx = image->x0 & 1U;
-    loopmaxw = maxw - offx;
+	offx = image->x0 & 1U;
+	loopmaxw = maxw - offx;
 	offy = image->y0 & 1U;
-    loopmaxh = maxh - offy;
+	loopmaxh = maxh - offy;
 
 	if (offy > 0U) {
-        size_t j;
+		size_t j;
 
-        for (j = 0; j < maxw; ++j) {
-            color_convert_sycc(data, (y - base)*3, offset, upb, *y, 0, 0);
-            ++y;
-        }
-    }
+		for (j = 0; j < maxw; ++j) {
+			color_convert_sycc(data, (y - base)*3, offset, upb, *y, 0, 0);
+			++y;
+		}
+	}
 	for (i = 0U; i < (loopmaxh & ~(size_t)1U); i += 2U) {
-        size_t j;
+		size_t j;
 
-        ny = y + maxw;
+		ny = y + maxw;
 
-        if (offx > 0U) {
-            color_convert_sycc(data, (y - base)*3, offset, upb, *y, 0, 0);
-            ++y;
+		if (offx > 0U) {
+			color_convert_sycc(data, (y - base)*3, offset, upb, *y, 0, 0);
+			++y;
 			color_convert_sycc(data, (ny - base)*3, offset, upb, *ny, *cb, *cr);
-            ++ny;
-        }
+			++ny;
+		}
 
-        for (j = 0; j < (loopmaxw & ~(size_t)1U); j += 2U) {
-            color_convert_sycc(data, (y - base)*3, offset, upb, *y, *cb, *cr);
-            ++y;
-            color_convert_sycc(data, (y - base)*3, offset, upb, *y, *cb, *cr);
-            ++y;
+		for (j = 0; j < (loopmaxw & ~(size_t)1U); j += 2U) {
+			color_convert_sycc(data, (y - base)*3, offset, upb, *y, *cb, *cr);
+			++y;
+			color_convert_sycc(data, (y - base)*3, offset, upb, *y, *cb, *cr);
+			++y;
 
-            color_convert_sycc(data, (ny - base)*3, offset, upb, *ny, *cb, *cr);
-            ++ny;
-            color_convert_sycc(data, (ny - base)*3, offset, upb, *ny, *cb, *cr);
-            ++ny;
-            ++cb;
-            ++cr;
-        }
-        if (j < loopmaxw) {
-            color_convert_sycc(data, (y - base)*3, offset, upb, *y, *cb, *cr);
-            ++y;
+			color_convert_sycc(data, (ny - base)*3, offset, upb, *ny, *cb, *cr);
+			++ny;
+			color_convert_sycc(data, (ny - base)*3, offset, upb, *ny, *cb, *cr);
+			++ny;
+			++cb;
+			++cr;
+		}
+		if (j < loopmaxw) {
+			color_convert_sycc(data, (y - base)*3, offset, upb, *y, *cb, *cr);
+			++y;
 
-            color_convert_sycc(data, (ny - base)*3, offset, upb, *ny, *cb, *cr);
-            ++ny;
-            ++cb;
-            ++cr;
-        }
-        y += maxw;
-    }
-    if (i < loopmaxh) {
-        size_t j;
+			color_convert_sycc(data, (ny - base)*3, offset, upb, *ny, *cb, *cr);
+			++ny;
+			++cb;
+			++cr;
+		}
+		y += maxw;
+	}
+	if (i < loopmaxh) {
+		size_t j;
 
-        for (j = 0U; j < (maxw & ~(size_t)1U); j += 2U) {
-            color_convert_sycc(data, (y - base)*3, offset, upb, *y, *cb, *cr);
-            ++y;
+		for (j = 0U; j < (maxw & ~(size_t)1U); j += 2U) {
+			color_convert_sycc(data, (y - base)*3, offset, upb, *y, *cb, *cr);
+			++y;
 
-            color_convert_sycc(data, (y - base)*3, offset, upb, *y, *cb, *cr);
-            ++y;
-            ++cb;
-            ++cr;
-        }
-        if (j < maxw) {
-            color_convert_sycc(data, (y - base)*3, offset, upb, *y, *cb, *cr);
-        }
-    }
+			color_convert_sycc(data, (y - base)*3, offset, upb, *y, *cb, *cr);
+			++y;
+			++cb;
+			++cr;
+		}
+		if (j < maxw) {
+			color_convert_sycc(data, (y - base)*3, offset, upb, *y, *cb, *cr);
+		}
+	}
 }
 
 /*
@@ -341,49 +341,49 @@ void color_convert_sycc420(opj_image_t *image, guint8 *data)
  */
 void color_convert_sycc422(opj_image_t *image, guint8 *data)
 {
-    const int *base, *y, *cb, *cr;
-    size_t maxw, maxh, offx, loopmaxw;
-    int offset, upb;
-    size_t i;
+	const int *base, *y, *cb, *cr;
+	size_t maxw, maxh, offx, loopmaxw;
+	int offset, upb;
+	size_t i;
 
-    upb = (int)image->comps[0].prec;
-    offset = 1 << (upb - 1);
-    upb = (1 << upb) - 1;
+	upb = (int)image->comps[0].prec;
+	offset = 1 << (upb - 1);
+	upb = (1 << upb) - 1;
 
-    maxw = (size_t)image->comps[0].w;
-    maxh = (size_t)image->comps[0].h;
+	maxw = (size_t)image->comps[0].w;
+	maxh = (size_t)image->comps[0].h;
 
 	base = image->comps[0].data;
-    y = image->comps[0].data;
-    cb = image->comps[1].data;
-    cr = image->comps[2].data;
+	y = image->comps[0].data;
+	cb = image->comps[1].data;
+	cr = image->comps[2].data;
 
 	offx = image->x0 & 1U;
-    loopmaxw = maxw - offx;
+	loopmaxw = maxw - offx;
 
 	for (i = 0U; i < maxh; ++i) {
-        size_t j;
+		size_t j;
 
-        if (offx > 0U) {
-            color_convert_sycc(data, (y - base)*3, offset, upb, *y, 0, 0);
-            ++y;
-        }
+		if (offx > 0U) {
+			color_convert_sycc(data, (y - base)*3, offset, upb, *y, 0, 0);
+			++y;
+		}
 
-        for (j = 0U; j < (loopmaxw & ~(size_t)1U); j += 2U) {
-            color_convert_sycc(data, (y - base)*3, offset, upb, *y, *cb, *cr);
-            ++y;
-            color_convert_sycc(data, (y - base)*3, offset, upb, *y, *cb, *cr);
-            ++y;
-            ++cb;
-            ++cr;
-        }
-        if (j < loopmaxw) {
-            color_convert_sycc(data, (y - base)*3, offset, upb, *y, *cb, *cr);
-            ++y;
-            ++cb;
-            ++cr;
-        }
-    }
+		for (j = 0U; j < (loopmaxw & ~(size_t)1U); j += 2U) {
+			color_convert_sycc(data, (y - base)*3, offset, upb, *y, *cb, *cr);
+			++y;
+			color_convert_sycc(data, (y - base)*3, offset, upb, *y, *cb, *cr);
+			++y;
+			++cb;
+			++cr;
+		}
+		if (j < loopmaxw) {
+			color_convert_sycc(data, (y - base)*3, offset, upb, *y, *cb, *cr);
+			++y;
+			++cb;
+			++cr;
+		}
+	}
 }
 
 /*
@@ -395,24 +395,24 @@ void color_convert_sycc444(opj_image_t *image, guint8 *data)
 	size_t maxw, maxh, max;
 	int offset, upb;
 
-    upb = (int)image->comps[0].prec;
-    offset = 1 << (upb - 1);
-    upb = (1 << upb) - 1;
+	upb = (int)image->comps[0].prec;
+	offset = 1 << (upb - 1);
+	upb = (1 << upb) - 1;
 
-    maxw = (size_t)image->comps[0].w;
-    maxh = (size_t)image->comps[0].h;
-    max = maxw * maxh;
+	maxw = (size_t)image->comps[0].w;
+	maxh = (size_t)image->comps[0].h;
+	max = maxw * maxh;
 
 	y = image->comps[0].data;
-    cb = image->comps[1].data;
-    cr = image->comps[2].data;
+	cb = image->comps[1].data;
+	cr = image->comps[2].data;
 
 	for (size_t i = 0U; i < max; ++i) {
-        color_convert_sycc(data, i, offset, upb, *y, *cb, *cr);
-        ++y;
-        ++cb;
-        ++cr;
-    }
+		color_convert_sycc(data, i, offset, upb, *y, *cb, *cr);
+		++y;
+		++cb;
+		++cr;
+	}
 }
 
 #endif
