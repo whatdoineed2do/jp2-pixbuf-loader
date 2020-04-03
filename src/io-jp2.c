@@ -142,12 +142,15 @@ static GdkPixbuf *gdk_pixbuf__jp2_image_load(FILE *fp, GError **error)
 		case COLOR_SPACE_SYCC444:
 			color_convert_sycc444(image, data);
 			break;
+		case COLOR_SPACE_CMYK:
+			color_convert_cmyk(image, data);
+			break;
 	}
 
 	pixbuf = gdk_pixbuf_new_from_data(
 		(const guchar*) data,                           // Actual data. RGB: {0, 0, 0}. RGBA: {0, 0, 0, 0}.
 		GDK_COLORSPACE_RGB,                             // Colorspace (only RGB supported, lol, what's the point)
-		(image->numcomps == 4 || image->numcomps == 2), // has_alpha
+		(components == 4 || components == 2), // has_alpha
 		8,                                              // bits_per_sample (only 8 bit supported, again, why even bother)
 		(int) image->comps[0].w,                        // width
 		(int) image->comps[0].h,                        // height

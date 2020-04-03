@@ -30,6 +30,7 @@ typedef enum {
 	COLOR_SPACE_SYCC420 = 4, // Y, Cb, Cr. 4:2:0 (2x2 share chroma), alpha optional
 	COLOR_SPACE_SYCC422 = 5, // Y, Cb, Cr. 4:2:2 (2x1 share chroma), alpha optional
 	COLOR_SPACE_SYCC444 = 6, // Y, Cb, Cr. 4:4:4, alpha optional
+	COLOR_SPACE_CMYK = 7, // C, M, Y, K
 } COLOR_SPACE;
 
 /*
@@ -56,8 +57,12 @@ gboolean color_info(opj_image_t *image, int *components, COLOR_SPACE *colorspace
 				// If alpha, two components, otherwize, one component
 				*components = (image->numcomps == 4 || image->numcomps == 2) ? 4 : 3;
 				return TRUE;
-			} else {
+			} else if (image->numcomps == 3 || image->numcomps == 4) {
+				// Fallback to RGB if unspecified and seemingly RGB or RGBA
 				*colorspace = COLOR_SPACE_RGB;
+			} else {
+				// Only gets here if there are 5 components
+				return FALSE;
 			}
 			break;
 		case OPJ_CLRSPC_SYCC:
@@ -90,10 +95,29 @@ gboolean color_info(opj_image_t *image, int *components, COLOR_SPACE *colorspace
 					(image->comps[2].dy == 1)
 				) { // No sub-sample
 					*colorspace = COLOR_SPACE_SYCC444;
+				} else {
+					return FALSE;
 				}
 			break;
 		case OPJ_CLRSPC_SRGB:
 			*colorspace = COLOR_SPACE_RGB;
+			break;
+		case OPJ_CLRSPC_CMYK:
+			if(
+				// Less than 4 components? Not CMYK then.
+				(image->numcomps < 4) ||
+				// C's XRsiz and YRsiz has to match MYK's
+				(image->comps[0].dx != image->comps[1].dx) ||
+				(image->comps[0].dx != image->comps[2].dx) ||
+        		(image->comps[0].dx != image->comps[3].dx) ||
+        		(image->comps[0].dy != image->comps[1].dy) ||
+        		(image->comps[0].dy != image->comps[2].dy) ||
+        		(image->comps[0].dy != image->comps[3].dy)
+			) {
+				return FALSE;
+			}
+			*components = image->numcomps - 1;
+			*colorspace = COLOR_SPACE_CMYK;
 			break;
 		default:
 			return FALSE;
@@ -131,6 +155,33 @@ void color_convert_rgb(opj_image_t *image, guint8 *data)
 		{
 			data[counter++] =  util_clamp(image->comps[image->numcomps - 1].data[i] + adjustA, max);
 		}
+	}
+}
+
+/**
+ * Converts decoded data from opj_decode CMYK to GdkPixbuf RGB
+ */
+void color_convert_cmyk(opj_image_t *image, guint8 *data)
+{
+	int counter = 0;
+	float C, M, Y, K;
+    float sC, sM, sY, sK;
+
+    sC = 1.0F / (float)((1 << image->comps[0].prec) - 1);
+    sM = 1.0F / (float)((1 << image->comps[1].prec) - 1);
+    sY = 1.0F / (float)((1 << image->comps[2].prec) - 1);
+    sK = 1.0F / (float)((1 << image->comps[3].prec) - 1);
+
+	for(int i = 0; i < (int) image->comps[0].w * (int) image->comps[0].h; i++)
+	{
+		C = 1.0F - (float)(image->comps[0].data[i]) * sC;
+        M = 1.0F - (float)(image->comps[1].data[i]) * sM;
+        Y = 1.0F - (float)(image->comps[2].data[i]) * sY;
+        K = 1.0F - (float)(image->comps[3].data[i]) * sK;
+
+		data[counter++] = (int)(255.0F * C * K);
+		data[counter++] = (int)(255.0F * M * K);
+		data[counter++] = (int)(255.0F * Y * K);
 	}
 }
 
