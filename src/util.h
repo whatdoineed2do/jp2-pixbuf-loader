@@ -111,7 +111,7 @@ opj_stream_t* util_create_stream(FILE *fp)
 /**
  * Destroy stream, codec, and image. As long as they aren't null pointers.
  */
-void util_destroy(opj_stream_t* stream, opj_codec_t *codec, opj_image_t *image)
+void util_destroy(opj_codec_t *codec, opj_stream_t* stream, opj_image_t *image)
 {
 	if(stream != NULL)
 	{
