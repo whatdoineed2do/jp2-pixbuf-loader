@@ -88,8 +88,8 @@ gboolean color_info(opj_image_t *image, int *components, COLOR_SPACE *colorspace
 				}
 				else if(
 					(image->comps[0].dx == 1) &&
-					(image->comps[1].dx == 2) &&
-					(image->comps[2].dx == 2) &&
+					(image->comps[1].dx == 1) &&
+					(image->comps[2].dx == 1) &&
 					(image->comps[0].dy == 1) &&
 					(image->comps[1].dy == 1) &&
 					(image->comps[2].dy == 1)
