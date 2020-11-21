@@ -36,7 +36,7 @@ gint main(gint argc, gchar **argv)
 
     g_assert(error == NULL);
 
-    components = gdk_pixbuf_get_n_channels (pixbuf);
+    components = gdk_pixbuf_get_n_channels(pixbuf);
     pixels = gdk_pixbuf_get_pixels(pixbuf);
 
     g_assert(gdk_pixbuf_get_colorspace(pixbuf) == GDK_COLORSPACE_RGB);

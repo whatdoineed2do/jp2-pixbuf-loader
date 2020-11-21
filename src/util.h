@@ -88,24 +88,24 @@ static OPJ_SIZE_T opj_write_from_file(void *p_buffer, OPJ_SIZE_T p_nb_bytes, FIL
  * Create stream from file pointer.
  * A similar funtion was deprecated and removed from openjpeg.c.
  */
-opj_stream_t* util_create_stream(FILE *fp)
+opj_stream_t* util_create_stream(FILE *fp, int is_input)
 {
-	opj_stream_t *l_stream;
+	opj_stream_t *stream;
 
-	l_stream = opj_stream_create(OPJ_J2K_STREAM_CHUNK_SIZE, 1);
-	if(!l_stream)
+	stream = opj_stream_create(OPJ_J2K_STREAM_CHUNK_SIZE, is_input);
+	if(!stream)
 	{
 		return NULL;
 	}
 
-	opj_stream_set_read_function(l_stream, (opj_stream_read_fn) opj_read_from_file);
-	opj_stream_set_seek_function(l_stream, (opj_stream_seek_fn) opj_seek_from_file);
-	opj_stream_set_skip_function(l_stream, (opj_stream_skip_fn) opj_skip_from_file);
-	opj_stream_set_user_data(l_stream, fp, NULL);
-	opj_stream_set_user_data_length(l_stream, opj_get_data_length_from_file(fp));
-	opj_stream_set_write_function(l_stream, (opj_stream_write_fn) opj_write_from_file);
+	opj_stream_set_read_function(stream, (opj_stream_read_fn) opj_read_from_file);
+	opj_stream_set_seek_function(stream, (opj_stream_seek_fn) opj_seek_from_file);
+	opj_stream_set_skip_function(stream, (opj_stream_skip_fn) opj_skip_from_file);
+	opj_stream_set_user_data(stream, fp, NULL);
+	opj_stream_set_user_data_length(stream, opj_get_data_length_from_file(fp));
+	opj_stream_set_write_function(stream, (opj_stream_write_fn) opj_write_from_file);
 
-	return l_stream;
+	return stream;
 }
 
 /**

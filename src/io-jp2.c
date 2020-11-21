@@ -26,6 +26,17 @@
 #include <util.h>
 #include <color.h>
 
+typedef enum {
+	IS_OUTPUT = 0,
+	IS_INPUT = 1,
+} IS_IO;
+
+typedef enum {
+	J2K_CFMT = 0,
+	JP2_CFMT = 1,
+	JPT_CFMT = 2,
+} CFMT;
+
 typedef struct {
 	GdkPixbufModuleSizeFunc size_func;
 	GdkPixbufModuleUpdatedFunc update_func;
@@ -35,7 +46,7 @@ typedef struct {
 	GError **error;
 } JP2Context;
 
-static void free_buffer (guchar *pixels, gpointer data)
+static void free_buffer(guchar *pixels, gpointer data)
 {
 	g_free(pixels);
 }
@@ -51,11 +62,11 @@ static GdkPixbuf *gdk_pixbuf__jp2_image_load(FILE *fp, GError **error)
 
 	opj_set_default_decoder_parameters(&parameters);
 
-	stream = util_create_stream(fp);
+	stream = util_create_stream(fp, IS_INPUT);
 	if(!stream)
 	{
 		util_destroy(codec, stream, image);
-		g_set_error(error, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_FAILED, "Failed to create stream fom file");
+		g_set_error(error, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_FAILED, "Failed to create stream from file pointer");
 		return FALSE;
 	}
 
@@ -94,6 +105,15 @@ static GdkPixbuf *gdk_pixbuf__jp2_image_load(FILE *fp, GError **error)
 		g_set_error(error, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_FAILED, "Failed to read header");
 		return FALSE;
 	}
+
+	/* Optional if decoding the entire image, which is why it's commented out
+	if(!opj_set_decode_area(codec, image, (OPJ_INT32) parameters.DA_x0, (OPJ_INT32) parameters.DA_y0, (OPJ_INT32) parameters.DA_x1, (OPJ_INT32) parameters.DA_y1))
+	{
+		util_destroy(codec, stream, image);
+		g_set_error(error, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_FAILED, "Failed to set decode area");
+		return FALSE;
+	}
+	*/
 
 	if(!opj_decode(codec, stream, image) && opj_end_decompress(codec, stream))
 	{
@@ -159,6 +179,8 @@ static GdkPixbuf *gdk_pixbuf__jp2_image_load(FILE *fp, GError **error)
 		NULL                                  // closure data to pass to the destroy notification function
 	);
 
+	opj_image_destroy(image);
+
 	return pixbuf;
 }
 
@@ -198,17 +220,6 @@ static gboolean gdk_pixbuf__jp2_image_load_increment(gpointer context, const guc
 	return FALSE;
 }
 
-static gboolean gdk_pixbuf__jp2_image_save
-(
-	FILE *f,
-	GdkPixbuf *pixbuf,
-	gchar **keys,
-	gchar **values,
-	GError **error
-) {
-	return TRUE;
-}
-
 static gboolean gdk_pixbuf__jp2_image_save_to_callback
 (
 	GdkPixbufSaveFunc save_func,
@@ -223,15 +234,158 @@ static gboolean gdk_pixbuf__jp2_image_save_to_callback
 
 #endif
 
-/**
+static gboolean save_jp2
+(
+	GdkPixbuf *pixbuf,
+	gchar **keys,
+	gchar **values,
+	GError **error,
+	FILE *fp
+) {
+	int counter = 0;
+	guchar *pixels;
+	gboolean has_alpha;
+	opj_codec_t *codec = NULL;
+	opj_image_t *image = NULL;
+	opj_stream_t *stream = NULL;
+	opj_cparameters_t parameters;
+	int components, precision, width, height;
+	opj_image_cmptparm_t component_parameters[4]; /* RGBA: max. 4 components */
+
+	opj_set_default_encoder_parameters(&parameters);
+	parameters.cod_format = JP2_CFMT;
+
+	width = gdk_pixbuf_get_width(pixbuf);
+    height = gdk_pixbuf_get_height(pixbuf);
+	pixels = gdk_pixbuf_get_pixels(pixbuf);
+	components = gdk_pixbuf_get_n_channels(pixbuf);
+	precision = gdk_pixbuf_get_bits_per_sample(pixbuf);
+
+	has_alpha = (components == 4);
+
+	memset(&component_parameters[0], 0, (size_t) components * sizeof(opj_image_cmptparm_t));
+
+	for(int i = 0; i < components; i++)
+	{
+		component_parameters[i].prec = (OPJ_UINT32) precision;
+		component_parameters[i].bpp = (OPJ_UINT32) precision;
+		component_parameters[i].sgnd = 0;
+		component_parameters[i].dx = (OPJ_UINT32) 1;
+		component_parameters[i].dy = (OPJ_UINT32) 1;
+		component_parameters[i].w = (OPJ_UINT32) width;
+		component_parameters[i].h = (OPJ_UINT32) height;
+	}
+
+	image = opj_image_create((OPJ_UINT32) components, &component_parameters[0], OPJ_CLRSPC_SRGB);
+
+	if(!image)
+	{
+		g_set_error(error, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_FAILED, "Failed to create image");
+		return FALSE;
+	}
+
+	image->x0 = (OPJ_UINT32) 0;
+	image->y0 = (OPJ_UINT32) 0;
+	image->x1 = (OPJ_UINT32) width;
+	image->y1 = (OPJ_UINT32) height;
+
+	for(int i = 0; i < width * height; i++)
+	{
+		image->comps[0].data[i] = pixels[counter++];
+		image->comps[1].data[i] = pixels[counter++];
+		image->comps[2].data[i] = pixels[counter++];
+
+		if(has_alpha)
+		{
+			image->comps[3].data[i] = pixels[counter++];
+		}
+	}
+
+	// Encode
+
+	switch(parameters.cod_format)
+	{
+		case J2K_CFMT:
+			codec = opj_create_compress(OPJ_CODEC_J2K);
+			break;
+		case JP2_CFMT:
+			codec = opj_create_compress(OPJ_CODEC_JP2);
+			break;
+		case JPT_CFMT:
+			codec = opj_create_compress(OPJ_CODEC_JPT);
+			break;
+		default:
+			g_set_error(error, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_FAILED, "Failed to create compress");
+			return FALSE;
+	}
+
+	#if DEBUG == TRUE
+		opj_set_info_handler(codec, info_callback, 00);
+		opj_set_warning_handler(codec, warning_callback, 00);
+		opj_set_error_handler(codec, error_callback, 00);
+	#endif
+
+	if(!opj_setup_encoder(codec, &parameters, image))
+	{
+		util_destroy(codec, stream, image);
+		g_set_error(error, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_FAILED, "Failed to setup encoder");
+		return FALSE;
+	}
+
+	stream = util_create_stream(fp, IS_OUTPUT);
+
+	if(!stream)
+	{
+		util_destroy(codec, stream, image);
+		g_set_error(error, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_FAILED, "Failed to create stream from file pointer");
+		return FALSE;
+	}
+
+	if(!opj_start_compress(codec, image, stream))
+	{
+		util_destroy(codec, stream, image);
+		g_set_error(error, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_FAILED, "Failed to start compressing the image");
+		return FALSE;
+	} else {
+		if(!opj_encode(codec, stream))
+		{
+			util_destroy(codec, stream, image);
+			g_set_error(error, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_FAILED, "Failed to encode the image");
+			return FALSE;
+		}
+
+		if(!opj_end_compress(codec, stream))
+		{
+			util_destroy(codec, stream, image);
+			g_set_error(error, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_FAILED, "Failed to end compressing the image");
+			return FALSE;
+		}
+	}
+
+	util_destroy(codec, stream, image);
+
+	return TRUE;
+}
+
+static gboolean gdk_pixbuf__jp2_image_save
+(
+	FILE *fp,
+	GdkPixbuf *pixbuf,
+	gchar **keys,
+	gchar **values,
+	GError **error
+) {
+	return save_jp2(pixbuf, keys, values, error, fp);
+}
+
+/*
  * Module entry points - This is where it all starts
  */
-
 void fill_vtable(GdkPixbufModule *module)
 {
 	module->load             = gdk_pixbuf__jp2_image_load;
+	module->save             = gdk_pixbuf__jp2_image_save;
 	// TODO: consider implementing these
-	//module->save             = gdk_pixbuf__jp2_image_save;
 	//module->stop_load        = gdk_pixbuf__jp2_image_stop_load;
 	//module->begin_load       = gdk_pixbuf__jp2_image_begin_load;
 	//module->load_increment   = gdk_pixbuf__jp2_image_load_increment;
@@ -242,8 +396,8 @@ void fill_info(GdkPixbufFormat *info)
 {
 	static GdkPixbufModulePattern signature[] =
 	{
-		{ "    jP", "!!!!  ", 100 },		/* file begins with 'jP' at offset 4 */
-		{ "\xff\x4f\xff\x51\x00", NULL, 100 },	/* file starts with FF 4F FF 51 00 */
+		{ "    jP", "!!!!  ", 100 },		   /* file begins with 'jP' at offset 4 */
+		{ "\xff\x4f\xff\x51\x00", NULL, 100 }, /* file starts with FF 4F FF 51 00 */
 		{ NULL, NULL, 0 }
 	};
 
@@ -271,7 +425,7 @@ void fill_info(GdkPixbufFormat *info)
 
 	info->description = "JPEG2000";
 	info->extensions  = extensions;
-	info->flags       = GDK_PIXBUF_FORMAT_THREADSAFE; // TODO: | GDK_PIXBUF_FORMAT_WRITABLE
+	info->flags       = GDK_PIXBUF_FORMAT_WRITABLE | GDK_PIXBUF_FORMAT_THREADSAFE;
 	info->license     = "LGPL";
 	info->mime_types  = mime_types;
 	info->name        = "jp2";

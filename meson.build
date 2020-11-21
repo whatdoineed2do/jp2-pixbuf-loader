@@ -6,6 +6,10 @@ gdk_pixbuf_query_loaders = find_program(get_option('gdk_pixbuf_query_loaders_pat
 
 openjpeg = dependency('libopenjp2')
 
+if get_option('buildtype') == 'debug'
+    add_global_arguments('-DDEBUG=TRUE', language: 'c')
+endif
+
 pixbuf_loader_openjpeg = shared_library(
     'pixbufloader-jp2',
     'src/io-jp2.c',

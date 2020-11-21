@@ -9,6 +9,7 @@ complex = executable('complex', 'complex.c', link_with: pixbuf_loader_openjpeg, 
 normal = executable('normal', 'normal.c', link_with: pixbuf_loader_openjpeg, dependencies: [gdk_pixbuf, openjpeg])
 large = executable('large', 'large.c', link_with: pixbuf_loader_openjpeg, dependencies: [gdk_pixbuf, openjpeg])
 cmyk = executable('cmyk', 'cmyk.c', link_with: pixbuf_loader_openjpeg, dependencies: [gdk_pixbuf, openjpeg])
+save = executable('save', 'save.c', link_with: pixbuf_loader_openjpeg, dependencies: [gdk_pixbuf, openjpeg])
 
 loaders_data = configuration_data()
 loaders_data.set('MODULE_PATH', pixbuf_loader_openjpeg.full_path())
@@ -114,5 +115,14 @@ test(
     env: [
         'GDK_PIXBUF_MODULE_FILE=' + meson.current_build_dir() + '/loaders.cache',
         'TEST_FILE=' + meson.current_source_dir() + '/cmyk.jp2',
+    ],
+)
+
+test(
+    'save',
+    save,
+    env: [
+        'GDK_PIXBUF_MODULE_FILE=' + meson.current_build_dir() + '/loaders.cache',
+        'TEST_FILE=' + meson.current_source_dir() + '/normal.jp2',
     ],
 )

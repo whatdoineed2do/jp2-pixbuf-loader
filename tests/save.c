@@ -27,7 +27,6 @@ gint main(gint argc, gchar **argv)
     gchar **env = g_get_environ();
 
     g_warning("%s", g_environ_getenv(env, "TEST_FILE"));
-
     GdkPixbuf *pixbuf = gdk_pixbuf_new_from_file(g_environ_getenv(env, "TEST_FILE"), &error);
 
     if(error)
@@ -37,33 +36,25 @@ gint main(gint argc, gchar **argv)
 
     g_assert(error == NULL);
 
-    width = gdk_pixbuf_get_width(pixbuf);
-    height = gdk_pixbuf_get_height(pixbuf);
-    rowstride = gdk_pixbuf_get_rowstride(pixbuf);
-    components = gdk_pixbuf_get_n_channels(pixbuf);
-    pixels = gdk_pixbuf_get_pixels(pixbuf);
+    // gdk_pixbuf_rotate_simple(pixbuf, GDK_PIXBUF_ROTATE_COUNTERCLOCKWISE);
 
-    g_assert(gdk_pixbuf_get_colorspace(pixbuf) == GDK_COLORSPACE_RGB);
+    GdkPixbuf *flipped = gdk_pixbuf_rotate_simple(pixbuf, GDK_PIXBUF_ROTATE_COUNTERCLOCKWISE); // gdk_pixbuf_flip(pixbuf, (gboolean) TRUE);
 
-    g_assert(gdk_pixbuf_get_bits_per_sample(pixbuf) == 8);
+    if(flipped == NULL)
+    {
+        g_error("Failed flipping image");
+    }
 
-    g_assert(!gdk_pixbuf_get_has_alpha(pixbuf));
+    g_assert(flipped != NULL);
 
-    g_assert(components == 3);
+    gdk_pixbuf_save(flipped, "test_save.jp2", "jp2", &error, NULL);
 
-    g_assert(width == 400);
+    if(error)
+    {
+        g_error("%s", error->message);
+    }
 
-    g_assert(height == 300);
-
-    g_assert(rowstride == 1200);
-
-    g_assert(pixels[0] == 51);
-    g_assert(pixels[1] == 58);
-    g_assert(pixels[2] == 49);
-
-    g_strfreev(env);
-
-    g_object_unref(pixbuf);
+    g_assert(error == NULL);
 
     return 0;
 }

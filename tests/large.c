@@ -39,7 +39,7 @@ gint main(gint argc, gchar **argv)
     width = gdk_pixbuf_get_width(pixbuf);
     height = gdk_pixbuf_get_height(pixbuf);
     rowstride = gdk_pixbuf_get_rowstride(pixbuf);
-    components = gdk_pixbuf_get_n_channels (pixbuf);
+    components = gdk_pixbuf_get_n_channels(pixbuf);
     pixels = gdk_pixbuf_get_pixels(pixbuf);
 
     /*g_assert(gdk_pixbuf_get_colorspace(pixbuf) == GDK_COLORSPACE_RGB);

@@ -13,6 +13,12 @@ Note: by default there's already some JPEG2000 support in GdkPixbuf, but that us
 meson build && cd build && ninja install
 ```
 
+Alternatively, specifically for arch:
+
+```
+meson --prefix=/usr --buildtype=plain build && meson compile -C build && sudo meson install -C build
+```
+
 ### Option 2. Arch linux / AUR:
 
 ```
@@ -53,7 +59,7 @@ meson test --gdb
 Run tests with valgrind:
 
 ```
-meson test --wrap='valgrind --leak-check=full'
+meson test --verbose --print-errorlogs --wrap='valgrind --leak-check=full'
 ```
 
 Run a specific test:
