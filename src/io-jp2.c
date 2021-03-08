@@ -381,6 +381,7 @@ static gboolean gdk_pixbuf__jp2_image_save
 /*
  * Module entry points - This is where it all starts
  */
+G_MODULE_EXPORT
 void fill_vtable(GdkPixbufModule *module)
 {
 	module->load             = gdk_pixbuf__jp2_image_load;
@@ -392,6 +393,7 @@ void fill_vtable(GdkPixbufModule *module)
 	//module->save_to_callback = gdk_pixbuf__jp2_image_save_to_callback;
 }
 
+G_MODULE_EXPORT
 void fill_info(GdkPixbufFormat *info)
 {
 	static GdkPixbufModulePattern signature[] =

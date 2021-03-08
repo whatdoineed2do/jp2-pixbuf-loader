@@ -4,7 +4,13 @@ gdk_pixbuf_moduledir = gdk_pixbuf.get_pkgconfig_variable('gdk_pixbuf_moduledir',
 gdk_pixbuf_query_loaders = gdk_pixbuf.get_pkgconfig_variable('gdk_pixbuf_query_loaders')
 gdk_pixbuf_query_loaders = find_program(get_option('gdk_pixbuf_query_loaders_path'), gdk_pixbuf_query_loaders, gdk_pixbuf_query_loaders+'-32', gdk_pixbuf_query_loaders+'-64')
 
-openjpeg = dependency('libopenjp2')
+cc = meson.get_compiler('c')
+
+openjpeg = dependency('libopenjp2', method: 'pkg-config', required: cc.get_argument_syntax() != 'msvc')
+
+if not openjpeg.found()
+  openjpeg = dependency('OpenJPEG', method: 'cmake')
+endif
 
 if get_option('buildtype') == 'debug'
     add_global_arguments('-DDEBUG=TRUE', language: 'c')
